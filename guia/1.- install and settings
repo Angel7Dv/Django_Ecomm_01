@@ -1,0 +1,27 @@
+instalacion
+    instal virtualenv
+    script\activate
+    pip install django
+    startproject 
+    startapp core 
+
+settigns configuration
+
+
+'DIRS': [BASE_DIR / 'static/templates'],
+
+
+import os
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static")
+]
+MEDIA_URL = '/images/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'static/images')
+
+
+
+core views
+    home - index
+    Contact
+    about
+

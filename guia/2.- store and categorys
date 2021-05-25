@@ -1,0 +1,176 @@
+
+create store app and stinggs
+
+    2.2.- create categoys and product model register admin and migrations
+        from django.db import models
+        Create your models here.
+
+        class Category(models.Model):
+            title = models.CharField(max_length=255)
+            slug = models.SlugField(max_length=255) 
+
+            #me contengo de usar mi poder de urls automaticas
+
+            def __str__(self):
+                return self.title
+
+
+
+        class Product(models.Model):
+            category = models.ForeignKey(Category, related_name='products', on_delete=models.CASCADE)
+            title = models.CharField(max_length=255)
+            slug = models.SlugField(max_length=255) 
+            description = models.TextField(null=True, blank=True)
+            price = models.FloatField()
+        
+
+            def __str__(self):
+                return self.title
+
+    2.3.- Get list of products and show on the front page
+        add get protuct to index.html
+
+    $
+        def index(request):
+            products = Product.objects.all()
+            ctx = {
+                'products': products
+            }
+            return render(request, 'core/index.html', ctx)
+    $
+
+    
+    2.4.- Show detail view for a product in index.html
+
+        {% block content %}
+        <div class="columns is-multiline">
+            {% for i in products %}
+                <div class="column is-3">
+                    <div class="card">
+                        <div class="card-content">
+                            <div class="media">
+                                <div class="media-content">
+                                    <p class="title is-4">{{ i.title }}</p>
+                                    <p class="subtitle is-6">{{ i.price }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <footer class="card-footer">
+                            <a href="{% url 'detail' i.slug %}" class="card-footer-item">view</a>
+                        </footer>
+                    </div>
+
+                </div>
+
+            {% endfor %}
+        </div>
+
+        {% endblock %}
+
+see details
+
+    create views 
+
+        def product_detail(request, category_slug, slug):
+            product = get_object_or_404(Product, slug=slug)
+            ctx = {      'product' : product    }
+
+            return render(request, 'store/detail.html', ctx)
+
+    register settings urls
+
+    create store/urls.py
+
+        urlpatterns = [
+            path('<slug:category_slug>/<slug:slug>', product_detail ,name='product_detail' ),
+        ]
+
+
+    detail.html
+
+            {% extends 'base.html' %}
+
+            {% block title %}Contact{% endblock %}
+
+            {% block content %}
+                <h1 class="title"> {{ product.title }}</h1>
+                <h2 class="subtitle">{{ product.price }}</h2>
+                
+                {% if product.description %}
+                    {{ product.description }}
+                {% endif %}
+
+            {% endblock %}
+
+        
+
+
+2 Show categories in the menu
+
+    crea un nuevo archivo archivo context_processos.py
+
+        from .views import Category
+        def menu_categoy(request):
+            menuCategoy = Category.objects.all()
+            return {'menuCategoy':menuCategoy }
+
+
+    regitrarlo en sttings
+
+        'OPTIONS': {
+                    'context_processors': [
+                        .....
+                        'django.contrib.messages.context_processors.messages',
+                        'store.context_processors.menu_categoy'
+                    ],
+                },
+
+    agregar los links al html
+
+
+        <div class="navbar-iten">
+
+            {% for i in menu_categoy %}
+                <a class="navbar-item" href="#">
+                    {{ i.title }} 
+                </a>
+            {% endfor %}
+                
+        </div>
+
+
+
+3.- Show detail view for a category (Title and list related products)
+
+
+    agrego una funcion con 2 parametros y su url
+
+        def category(request, slug):
+            category = get_object_or_404(Category, slug=slug)
+            #aqui invoca el campo ForeignKey  
+            ##trae todo los campos de Products es como Products.objets.all()
+            products = category.products.all()
+
+
+            ctx = {
+                'category': category,
+                'products': products
+            }
+            return render(request, 'store/category.html', ctx)
+
+
+    las url las diferenciamos para no tener problemas 
+    y agregamos un parametro antes al detail para que la url sea = categoria/name_producto
+
+
+    def detail(request, categoryslug, slug):
+
+urlpatterns = [
+    path('<slug:category_slug>/<slug:slug>', product_detail ,name='product_detail' ),
+    path('<slug:slug>', category_detail ,name='category_detail' ),
+]
+
+
+    url en GET  = {% url 'product_detail' i.category.slug i.slug %}" 
+    url en category detail = {% url 'product_detail' category.slug i.slug %}

@@ -1,0 +1,66 @@
+documentatcion 
+
+https://docs.djangoproject.com/en/3.2/topics/forms/modelforms/
+
+
+propiedades en el html 
+
+{{post.body|linebreaksbr}}   ==> da un formato para tomar en cuenta los saltos de linea
+
+
+
+#ForeignKey /// related_name="[es lo mas importante!!!!!!!!]"
+
+    selecciona directamente al usuario como autor
+        author = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+         
+    catecory = models.ForeignKey(Categori[2], related_name="[1]", on_delete=models.CASCADE)
+        [1] = nombre de la clase actual para ser referido en la clase foranea con el nombre de esta clase
+        [2]a si se llama este atributo Categori.posts.all() = de lo contrario se llamaria Categori_set.all()
+        
+
+ 
+url automatica
+
+    from django.utils.text import slugify
+    url = models.SlugField(max_length=255, unique=True)  <--- unique para que no exita otra igual  
+
+    def save(self, *args, **kwargs):    #luego agregamos esta funcion a la clase para que se agrege el titulo como slug
+        self.url = slugify(self.title)
+        super(Post, self).save(*args, **kwargs)
+
+
+ejemplo de  POST object y auto agregado de la url ###########
+    @login_required
+    def add_product(request):
+        if request.method == 'POST':
+            form = ProductForm(request.POST, request.FILES)
+
+            if form.is_valid():
+                product = form.save(commit=False)
+                product.vendor = request.user.vendor
+                product.slug = slugify(product.title)
+                product.save()
+
+                return redirect('vendor_admin')
+        else:
+            form = ProductForm()
+
+        return render(request, 'vendor/add_product.html', {'form':form})
+
+
+
+
+
+Publicacion automatica
+
+    models.py
+
+        published_date = models.DateTimeField(blank=True, null=True)
+        def publish(self):
+            self.published_date = timezone.now()
+            self.save()
+            
+    view.py:
+        posts = Post.objects.filter(published_date__lte=timezone.now()).order_by('-published_date')
+            solo publica los que tengan el campo published_date__lte que coincida con la hora actual
