@@ -1,0 +1,513 @@
+-Only show featured products on the frontpage
+    agregar carateristica moldes.bolean a products
+    cambia al get.all a filter(carateristica=True)
+
+-Create folder and app for the cart
+
+
+-Create a view for the cart and show link in the menu
+    create view/ url/ html and link in navbar
+
+
+
+
+CREAMOS UNA API PARA GUARDAR DATOS EN EL NAVEGADOR
+
+modelo de ejcucion de los datos
+fetch('/api/' = acede a la logica 
+api.py = tiene la logica del session y la url de la api
+cart.py  = es el objeto dict [variables] que se guarda en session
+SESSION  = da la posibilidad de guardar un diccionario en el navegador
+
+
+
+
+-Creamos a SESSION
+
+    SESSION_COOKIE_AGE = 86400
+    CART_SESSION_ID = 'cart'     
+
+
+-Create a Cart class  [cart.py]
+    from typing import ItemsView
+    from django.conf import settings
+
+
+    from store.models import Product
+
+    #settings.SESSION_COOKIE_AGEsettings.SESSION_COOKIE_AGE
+
+    #SESSION_COOKIE_AGE = 86400
+    #CART_SESSION_ID = 'cart'     
+
+    class Cart(object):
+        def __init__(self, request):
+
+            # el get de session es un dicciona rellenable
+            self.session = request.session
+
+            # Recuerda las cookies [dict]
+
+            #[GET]
+            cart = self.session.get(settings.CART_SESSION_ID)
+
+            # Genera una nueva si no existe
+            #[ADD]
+            if not cart:
+                cart = self.session[settings.CART_SESSION_ID] = {}
+
+
+            # queda un simple diccionario que puede almacenar cookies
+
+            self.cart = cart  #[1] {'1': {'quantity': 1, 'price': 98.3, 'id': '1'}}
+
+
+        # [GET QUANTITY] conteo y suma de los totales de un producto
+
+        def __iter__(self):
+            products_ids = self.cart.keys() #[2] lista de objetos agregados = 
+            products_clean_ids = []
+
+            # AGREGA UN NUMERO Y UNA ID LIMPIA [{1 : ID}, {2 : ID}]
+            for key in products_ids: #dict_keys(['1', '2'])
+
+                products_clean_ids.append(key)
+                #agrega un nuevo valor al dicccionario numero tal product: id
+                self.cart[str(key)]['product'] = Product.objects.get(pk=key)
+
+
+            # SUMA DE LOS TOTALES DE UN PRODUCTO
+            for vdict in self.cart.values(): #{'quantity': 1, 'price': 98.3, 'id': '1'}}
+
+                vdict['total_price'] = int(vdict['price']) * int(vdict['quantity'])
+                yield vdict
+
+
+        # SUMA LAS CANTIDADES DE PRODUCTOS
+        def __len__(self):
+            return sum(item['quantity'] for item in self.cart.values())
+
+
+
+        # [ADD] AGREGAR PRODUCTO AL CARRITO
+        # TOMA EL MODEL PRODUCTO, LA CANTIDAD, Y ACCION SI ES ADD O UPDATE
+        def add(self, model, cantidad=1, actualiza_cantidad=False):
+    
+            # Product.id = solo la instancia actual [variable agregada de for en el html]
+            product_id = str(model.id)  
+
+            # Product.price  # dato numerico
+            price = model.price
+
+            #[ADD] si no existe el objeto en el diccionario lo agrega
+
+            if product_id is not self.cart:
+                # add variable al dict = ### variable anteriro
+                self.cart[product_id] = {'quantity': 0, 'price': price, 'id': product_id}
+                print("test 1 ADD diccionario de session ", self.cart[product_id])
+
+            #[UPDATE] si hay valor  de cantidad
+            if actualiza_cantidad: # es true
+                print("test 2 UPDATE CON VALORES")
+
+                self.cart[product_id]['quantity'] = cantidad
+
+            #[UPDATE] si no hay valor
+            else:
+
+                self.cart[product_id]['quantity'] = self.cart[product_id]['quantity'] + 1
+                print("test 3 UPDATE SIMPLE", self.cart[product_id])
+
+            self.save() # a continuacion se crea esta funcion
+
+
+
+        # [DELETE]
+
+        ########################################
+        ########################################
+        ########################################
+        ########################################
+
+
+
+        # [SAVE]
+        def save(self):
+
+
+            self.session[settings.CART_SESSION_ID] = self.cart
+            self.session.modified = True
+
+            print("test 4 SAVE", self.cart)
+
+
+crear la API
+
+    from django.http.response import JsonResponse
+
+    import json
+
+    from django.shortcuts import get_object_or_404
+
+    from cart.cart import Cart
+
+    from .models import Product
+
+    def api_add_to_cart(request):
+        ############
+        data = json.loads(request.body)
+        
+
+        ###################
+        #estos datos de momento no se usan
+        jsonresponse = {'success': True}
+
+        #   datos para ser usados en la logica del html
+        product_id = data['product_id']
+        update = data['update']
+        quantity = data['quantity']
+
+
+
+        # objeto dict cookie recien creado
+        cart = Cart(request)
+        product = get_object_or_404(Product, pk=product_id)
+
+
+
+        # VARIABLES
+        #print(cart.cart)   # ==> {'1': {'quantity': 1, 'price': 98.3, 'id': '1'}}
+        #print(cart.cart.keys())  # ==> el 1
+        #print(cart.cart.values())  # ==> {'quantity': 1, 'price': 98.3, 'id': '1'}}
+        
+
+
+
+
+
+
+
+
+
+        # [ADD] crea el objeto y lo guarda
+        if not update:
+            #la funcion dentro del diccionario cookie
+            cart.add(model=product, cantidad=1, actualiza_cantidad=False)
+
+
+
+        # [UPDATE] aumenta la cantidad asignada
+        else:
+            cart.add(model=product, cantidad=quantity , actualiza_cantidad=True)
+
+        return JsonResponse(jsonresponse)
+
+
+
+    registra la url
+        path('api', api_add_to_cart, name='api_add_to_cart')
+
+agrega a la base.html
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    {% block scripts %}
+    {% endblock %}
+
+
+agregar la logica Vue a detail.html
+
+    {% extends 'base.html' %}
+
+    {% block title %}{{ product.title }}{% endblock %}
+
+    {% block content %}
+    <!-- instancia Vue -->
+    <div id="app">
+
+        <h1 class="title"> {{ product.title }}</h1>
+        <h2 class="subtitle">{{ product.price }}</h2>
+        
+        {% if product.description %}
+        <p>
+            {{ product.description }}
+        </p>
+        {% endif %}
+
+        <!-- agrega a la logica de vue el dato del for -->
+        <button @click="addToCart({{product.id}})">Add to cart</button>  
+
+        <!--
+            fetch('/api/' = acede a la logica 
+            api.py = tiene la logica del session = puede unsar print()
+            cart.py  = es el objeto dict [variables] que se guarda en session
+            SESSION  = da la posibilidad de guardar un diccionario en el navegador
+        -->
+
+
+    </div>
+
+    {% endblock %}
+
+    <!-- parte 3 add cart -->
+    {% block scripts %}
+        <script>
+            var Vue = new Vue({
+                el: '#app',
+                delimeters: ['[[',']]'], //no tengo idea
+                data () {
+                    return {
+
+                    }
+                },
+                mounted() {
+                    console.log("notoy")
+                },
+                
+                methods: {
+
+                    // EL UNICO METODO A USAR PARA EL BOTON
+                    addToCart(product_id){ //transforma el product.id en product_id string
+
+                        console.log('product_id', product_id)
+
+                        // LOS DATOS que se reserva el Cart session
+
+                        var data = {
+                            'product_id':product_id, 
+                            'update': false,
+                            'quantity': 1 
+                        };
+
+                        // AQUI LA LOGICA PARA TRAER LA API
+                        fetch('/api/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify(data)
+                        })
+                        .then((response) => { 
+                            console.log(response)
+                        })
+                        .catch(function (error){
+                            console.log(error)
+                        })
+
+                        // lista la API
+                    }
+                },
+            })
+        </script>
+
+    {% endblock %}
+
+
+cart detail
+
+    crea views cart.py
+    url
+
+
+
+
+
+
+
+-Make it possible to remove products from the cart
+
+
+cart.py
+    # [DELETE]
+
+    def remove(self, product_id):
+        if product_id in self.cart:
+            print("test 5 DELETE")
+
+            del self.cart[product_id]
+            self.save()
+
+apy.py
+
+    # API REMOVE
+
+    def api_remove_from_cart(request):
+        data = json.loads(request.body)
+        jsonresponse = {'success': True}
+        product_id = str(data['product_id']) 
+        cart = Cart(request)
+        cart.remove(product_id)
+
+        return JsonResponse(jsonresponse)
+
+
+    cart.html
+
+        {% extends 'base.html' %}
+
+        {% block title %}Cart{% endblock %}
+
+        {% block content %}
+        <div id="cart">
+
+
+                {% if cart %}
+
+                    {% for i in cart %}
+                        <h1>{{ i.product }} </h1>
+
+                        {% with product=i.product %}
+                            <p> product : {{ product }} </p>
+                        
+                        {% endwith %}
+
+                        <button @click="remove({{ i.id }})" >Remove</button>
+                    {% endfor %}
+
+
+                {% else %}
+
+                {% endif %}
+        
+        sadsad
+        
+        </div>
+
+
+        {% endblock %}
+
+
+        {% block scripts %}
+        <script>
+            var Vue = new Vue({
+                el: '#cart',
+                delimeters: ['[[',']]'], //no tengo idea
+                data () {
+                    return {
+
+                    }
+                },
+                mounted() {
+                    console.log("notoy")
+                },
+                
+                methods: {
+
+                    // EL UNICO METODO A USAR PARA EL BOTON
+                    remove(product_id){ //transforma el product.id en product_id string
+
+                        console.log('product_id', product_id)
+
+                        // LOS DATOS que se reserva el Cart session
+
+                        var data = {
+                            'product_id':product_id, 
+                        };
+
+                        // AQUI LA LOGICA PARA TRAER LA API
+                        fetch('/api/remove/', { // esta url accede a la funcion api_add_to_cart() que ejecuta cart.add()
+                            method: 'POST', 
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify(data)
+                        })
+                        .then((response) => { 
+                            console.log(response)
+                        })
+                        .catch(function (error){
+                            console.log(error)
+                        })
+
+                        // lista la API
+                    }
+                },
+            })
+        </script>
+        {% endblock %}
+
+
+
+-Show quantity and price in the cart
+
+
+-Update quantity
+
+        html
+            <tbody>
+                <td>{{ i.product }} </td>
+        -->     <td>{{i.quantity}} <button @click="increment({{ i.id }}, {{i.quantity}}  )">+</button></td>
+                <td>{{ i.total_price }}</td>
+                <td></td>
+                <td>   <button @click="remove({{ i.id }})" >Remove</button>     </td>
+            </tbody>
+            {% endfor %}
+
+
+       methods: {
+
+            // INCREMENTO
+            increment(product_id, quantity){ 
+
+                console.log(quantity)
+
+                // LOS DATOS que se reserva el Cart session
+
+                var data = {
+                    'product_id':product_id, 
+                    'update': true,
+                    'quantity': parseInt(quantity) + 1
+
+                };
+                
+
+                // AQUI LA LOGICA PARA TRAER LA API
+                fetch('/api/', { // esta url accede a la funcion api_add_to_cart() que ejecuta cart.add()
+                    method: 'POST', 
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(data)
+                })
+                .then((response) => { 
+                    console.log(response.data)
+                })
+                .catch(function (error){
+                    console.log(error)
+                })
+
+                console.log(data)
+                // lista la API
+                },
+
+
+
+
+-More Vue.js in the cart (automatically remove products, etc)
+
+
+
+delimiters   cambia  el uso de {{}} de vue a [[]]
+
+    delimiters: ['[[', ']]'],
+    data () {
+        return {
+            products: [{{ productsstring|safe }}],
+        }
+    },
+
+
+
+
+
+
+
+
+
+
+-Show cart in the menu (with quantity)

@@ -20,8 +20,8 @@ propiedades en el html
         
 
  
-url automatica
-
+url automatica en  models.py
+   
     from django.utils.text import slugify
     url = models.SlugField(max_length=255, unique=True)  <--- unique para que no exita otra igual  
 
@@ -30,7 +30,9 @@ url automatica
         super(Post, self).save(*args, **kwargs)
 
 
+url automatica en  views.py 
 ejemplo de  POST object y auto agregado de la url ###########
+
     @login_required
     def add_product(request):
         if request.method == 'POST':

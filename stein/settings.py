@@ -28,6 +28,14 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 
+
+# CART SESSION
+
+SESSION_COOKIE_AGE = 86400
+CART_SESSION_ID = 'cart'     
+# creo que esta es una variable que no ha sido usada voy a averiguar donde se usa
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -40,6 +48,7 @@ INSTALLED_APPS = [
 
     'core',
     'store',
+    'cart'
 ]
 
 MIDDLEWARE = [
